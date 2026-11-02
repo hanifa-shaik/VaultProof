@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 
 from audit import log_event
 from extensions import db
-from models import Document, new_id, utcnow
+from models import Document, Grant, User, new_id, utcnow
 from permissions import authorize
 
 bp = Blueprint("documents", __name__)
@@ -185,3 +185,64 @@ def delete(doc_id):
               document_id=doc.id, detail=doc.original_name)
     flash("Document deleted.", "success")
     return redirect(url_for("dashboard"))
+
+@bp.route("/documents/<doc_id>/share")
+@login_required
+def share(doc_id):
+    doc = load_or_404(doc_id, "share", "share_view")
+    grants = Grant.query.filter_by(document_id=doc.id, revoked_at=None).all()
+    return render_template("share.html", doc=doc, grants=grants)
+
+
+@bp.route("/documents/<doc_id>/grant", methods=["POST"])
+@login_required
+def grant(doc_id):
+    doc = load_or_404(doc_id, "share", "grant")
+    email = request.form.get("email", "").strip().lower()
+    permission = request.form.get("permission", "")
+
+    if permission not in ("read", "edit"):
+        flash("Please choose read or edit.", "danger")
+        return redirect(url_for("documents.share", doc_id=doc.id))
+
+    target = User.query.filter_by(email=email).first()
+    if target is None or not target.active or target.id == current_user.id:
+        log_event("grant", "denied", actor=current_user, document_id=doc.id,
+                  detail=f"invalid target: {email}"[:200])
+        flash("Could not share with that person. Check the email address.", "danger")
+        return redirect(url_for("documents.share", doc_id=doc.id))
+
+    existing = Grant.query.filter_by(document_id=doc.id, user_id=target.id).first()
+    if existing is None:
+        db.session.add(Grant(document_id=doc.id, user_id=target.id,
+                             permission=permission, granted_by=current_user.id))
+    else:                                    # re-grant or change level
+        existing.permission = permission
+        existing.revoked_at = None
+        existing.granted_by = current_user.id
+        existing.created_at = utcnow()
+    db.session.commit()
+
+    log_event("grant", "allowed", actor=current_user, document_id=doc.id,
+              detail=f"{permission} to {target.email}")
+    flash(f"Shared with {target.email} ({permission}).", "success")
+    return redirect(url_for("documents.share", doc_id=doc.id))
+
+
+@bp.route("/documents/<doc_id>/revoke/<int:grant_id>", methods=["POST"])
+@login_required
+def revoke(doc_id, grant_id):
+    doc = load_or_404(doc_id, "share", "revoke")
+    g = db.session.get(Grant, grant_id)
+    if g is None or g.document_id != doc.id or g.revoked_at is not None:
+        log_event("revoke", "denied", actor=current_user, document_id=doc.id,
+                  detail="grant not found for this document")
+        flash("That access could not be found.", "danger")
+        return redirect(url_for("documents.share", doc_id=doc.id))
+
+    g.revoked_at = utcnow()
+    db.session.commit()
+    log_event("revoke", "allowed", actor=current_user, document_id=doc.id,
+              detail=f"{g.permission} removed from {g.user.email}")
+    flash("Access removed.", "success")
+    return redirect(url_for("documents.share", doc_id=doc.id))

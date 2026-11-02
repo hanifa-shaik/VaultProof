@@ -17,6 +17,7 @@ def create_app(config_object=Config):
     import models
     from auth import bp as auth_bp
     from documents import bp as documents_bp
+    from permissions import authorize
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(documents_bp)
@@ -34,11 +35,20 @@ def create_app(config_object=Config):
     @app.route("/dashboard")
     @login_required
     def dashboard():
-        docs = (models.Document.query
-                .filter_by(owner_id=current_user.id, deleted_at=None)
-                .order_by(models.Document.created_at.desc())
-                .all())
-        return render_template("dashboard.html", docs=docs)
+        own = (models.Document.query
+               .filter_by(owner_id=current_user.id, deleted_at=None)
+               .order_by(models.Document.created_at.desc())
+               .all())
+
+        # Documents shared with me. authorize() has the final say.
+        shared = []
+        grants = models.Grant.query.filter_by(user_id=current_user.id,
+                                              revoked_at=None).all()
+        for g in grants:
+            if authorize(current_user, g.document, "read"):
+                shared.append((g.document, g.permission))
+
+        return render_template("dashboard.html", docs=own, shared=shared)
 
     @app.errorhandler(413)
     def too_large(e):

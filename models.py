@@ -70,3 +70,25 @@ class AuditLog(db.Model):
     ip = db.Column(db.String(64), nullable=True)
     prev_hash = db.Column(db.String(64), nullable=False)
     entry_hash = db.Column(db.String(64), nullable=False)
+
+
+class Grant(db.Model):
+    """One person's access to one document. Revoking sets revoked_at."""
+    __tablename__ = "grants"
+    __table_args__ = (
+        db.UniqueConstraint("document_id", "user_id", name="uq_grant_doc_user"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    document_id = db.Column(db.String(36), db.ForeignKey("documents.id"),
+                            nullable=False, index=True)
+    user_id = db.Column(db.String(36), db.ForeignKey("users.id"),
+                        nullable=False, index=True)
+    permission = db.Column(db.String(10), nullable=False)  # "read" or "edit"
+    granted_by = db.Column(db.String(36), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    revoked_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    document = db.relationship("Document", backref="grants")
+    user = db.relationship("User", foreign_keys=[user_id])

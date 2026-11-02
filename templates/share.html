@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block wclass %}w-wide{% endblock %}
+{% block content %}
+<h2>Share: {{ doc.original_name }}</h2>
+<p><a href="{{ url_for('dashboard') }}">&larr; Back to dashboard</a></p>
+
+<h5>Give someone access</h5>
+<form method="post" action="{{ url_for('documents.grant', doc_id=doc.id) }}" class="row g-2 mb-4">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="col-md-6"><input class="form-control" type="email" name="email"
+       placeholder="their email address" required maxlength="255"></div>
+  <div class="col-md-3"><select class="form-select" name="permission">
+       <option value="read">Read (view and download)</option>
+       <option value="edit">Edit (read and change)</option></select></div>
+  <div class="col-md-3"><button class="btn btn-primary w-100">Share</button></div>
+</form>
+
+<h5>People with access</h5>
+{% if grants %}
+<table class="table table-striped bg-white">
+  <thead><tr><th>Person</th><th>Access</th><th>Since</th><th></th></tr></thead>
+  <tbody>
+  {% for g in grants %}
+    <tr>
+      <td>{{ g.user.name }} ({{ g.user.email }})</td>
+      <td>{{ g.permission }}</td>
+      <td>{{ g.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+      <td class="text-end">
+        <form method="post" class="d-inline"
+              action="{{ url_for('documents.revoke', doc_id=doc.id, grant_id=g.id) }}"
+              onsubmit="return confirm('Remove this person\'s access?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-sm btn-outline-danger">Revoke</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="text-muted">Nobody else has access.</p>
+{% endif %}
+{% endblock %}

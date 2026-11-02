@@ -20,3 +20,8 @@ Only things that exist in the code are marked Done. Everything else says Planned
 | 14 | Uploaded file runs as a page in the browser | Done | Served as an attachment with `nosniff`, never from a public folder |
 | 15 | Someone other than the owner deletes a document | Done | `delete` calls `authorize()`. POST-only with a CSRF token |
 | 16 | Granting access to other users | Planned | Not built yet. Only owners can reach their own documents today |
+| 16 | Granting access to other users | Done | Owners grant read or edit by email. Stored in the `grants` table. Every grant and revoke is audited |
+| 17 | Access still works after being revoked | Done | `authorize()` checks the database on every request, so old links stop working at once. Tested by hand: viewer's saved download link gave 404 after revoke |
+| 18 | A person with read access shares or deletes the document | Done | Share and delete are owner-only in `authorize()`. A grant can never allow them |
+| 19 | Owner learns which emails have accounts by trying to share | Accepted | The share form says "Could not share" for any bad email, but a successful share confirms the account exists. Low risk: only document owners can use it |
+| 20 | Edit permission has no effect yet | Planned | `authorize()` supports "edit", but there is no edit route yet. Next part |
