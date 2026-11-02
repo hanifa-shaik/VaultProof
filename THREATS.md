@@ -13,3 +13,4 @@ Only things that exist in the code are marked Done. Everything else says Planned
 | 7 | Password guessing | Planned | Rate limiting not built yet |
 | 8 | Logins and actions not recorded | Planned | `log_event` exists, but no route calls it yet |
 | 9 | Someone edits the audit log to hide activity | Partly done | Rows are hash-chained and `verify_chain` detects edits. Not yet blocked: someone with full database access could rebuild the chain. Planned: a database rule against UPDATE and DELETE, plus a saved checkpoint |
+| 10 | Malicious or disguised file upload | Done | Extension allow-list, real content check (file signature), size limit, empty-file check, random storage name, refused uploads logged. Tested by hand with .zip and an empty file (add the others once you have run them) |
