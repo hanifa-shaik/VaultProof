@@ -1,27 +1,25 @@
-import os
 from flask import Flask, redirect, render_template, url_for
 from flask_login import current_user, login_required
 
 from config import Config
-from extensions import db, login_manager, csrf
+from extensions import csrf, db, login_manager
 
 
 def create_app(config_object=Config):
     app = Flask(__name__)
     app.config.from_object(config_object)
 
-    os.makedirs(app.instance_path, exist_ok=True)
-
     db.init_app(app)
     login_manager.init_app(app)
     csrf.init_app(app)
-
     login_manager.login_view = "auth.login"
 
     import models
     from auth import bp as auth_bp
+    from documents import bp as documents_bp
 
     app.register_blueprint(auth_bp)
+    app.register_blueprint(documents_bp)
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -36,7 +34,15 @@ def create_app(config_object=Config):
     @app.route("/dashboard")
     @login_required
     def dashboard():
-        return render_template("dashboard.html")
+        docs = (models.Document.query
+                .filter_by(owner_id=current_user.id, deleted_at=None)
+                .order_by(models.Document.created_at.desc())
+                .all())
+        return render_template("dashboard.html", docs=docs)
+
+    @app.errorhandler(413)
+    def too_large(e):
+        return "File too large. The maximum is 10 MB.", 413
 
     with app.app_context():
         db.create_all()
