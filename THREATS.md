@@ -14,3 +14,9 @@ Only things that exist in the code are marked Done. Everything else says Planned
 | 8 | Logins and actions not recorded | Planned | `log_event` exists, but no route calls it yet |
 | 9 | Someone edits the audit log to hide activity | Partly done | Rows are hash-chained and `verify_chain` detects edits. Not yet blocked: someone with full database access could rebuild the chain. Planned: a database rule against UPDATE and DELETE, plus a saved checkpoint |
 | 10 | Malicious or disguised file upload | Done | Extension allow-list, real content check (file signature), size limit, empty-file check, random storage name, refused uploads logged. Tested by hand with .zip and an empty file (add the others once you have run them) |
+| 11 | A user opens another user's document by pasting its link | Done (owner-only for now) | Every download calls `authorize()`. Anyone else gets 404 and a `denied` audit row. Tested by hand with two owners |
+| 12 | Guessing document IDs | Done | IDs are random UUIDs. "Not yours" and "does not exist" give the same 404 |
+| 13 | Stored file changed on disk | Done | SHA-256 fingerprint is checked on every download |
+| 14 | Uploaded file runs as a page in the browser | Done | Served as an attachment with `nosniff`, never from a public folder |
+| 15 | Someone other than the owner deletes a document | Done | `delete` calls `authorize()`. POST-only with a CSRF token |
+| 16 | Granting access to other users | Planned | Not built yet. Only owners can reach their own documents today |

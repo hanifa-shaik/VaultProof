@@ -4,13 +4,14 @@ import os
 import zipfile
 
 from flask import (Blueprint, abort, current_app, flash, redirect,
-                   render_template, request, url_for)
+                   render_template, request, send_file, url_for)
 from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 
 from audit import log_event
 from extensions import db
-from models import Document, new_id
+from models import Document, new_id, utcnow
+from permissions import authorize
 
 bp = Blueprint("documents", __name__)
 
@@ -129,4 +130,58 @@ def upload():
     log_event("upload", "allowed", actor=current_user, document_id=doc.id,
               detail=f"{name} ({len(data)} bytes)")
     flash("Document uploaded.", "success")
+    return redirect(url_for("dashboard"))
+
+
+def load_or_404(doc_id, permission, event):
+    """Fetch a document only if the current user is authorised.
+    'Not yours' and 'does not exist' give the SAME 404 answer."""
+    doc = db.session.get(Document, doc_id)
+    if not authorize(current_user, doc, permission):
+        log_event(event, "denied", actor=current_user,
+                  document_id=doc_id[:36],
+                  detail="not authorised or not found")
+        abort(404)
+    return doc
+
+
+@bp.route("/documents/<doc_id>/download")
+@login_required
+def download(doc_id):
+    doc = load_or_404(doc_id, "read", "download")
+
+    path = os.path.join(vault_dir(), doc.storage_name)
+    try:
+        with open(path, "rb") as fh:
+            data = fh.read()
+    except FileNotFoundError:
+        log_event("download", "denied", actor=current_user,
+                  document_id=doc.id, detail="file missing on disk")
+        abort(404)
+
+    # The file must still match the fingerprint stored at upload.
+    if hashlib.sha256(data).hexdigest() != doc.sha256:
+        log_event("download", "denied", actor=current_user,
+                  document_id=doc.id, detail="integrity check failed")
+        abort(500)
+
+    log_event("download", "allowed", actor=current_user,
+              document_id=doc.id, detail=doc.original_name)
+
+    resp = send_file(io.BytesIO(data), mimetype=doc.content_type,
+                     as_attachment=True, download_name=doc.original_name)
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@bp.route("/documents/<doc_id>/delete", methods=["POST"])
+@login_required
+def delete(doc_id):
+    doc = load_or_404(doc_id, "delete", "delete")
+    doc.deleted_at = utcnow()          # soft delete: the row is kept
+    db.session.commit()
+    log_event("delete", "allowed", actor=current_user,
+              document_id=doc.id, detail=doc.original_name)
+    flash("Document deleted.", "success")
     return redirect(url_for("dashboard"))
