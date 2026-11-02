@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Welcome, {{ current_user.name }}</h2>
+<p>Your role: <strong>{{ current_user.role }}</strong></p>
+<p class="text-muted">Documents will appear here soon.</p>
+{% endblock %}
