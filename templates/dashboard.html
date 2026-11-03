@@ -4,39 +4,46 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h2 class="mb-0">Welcome, {{ current_user.name }}</h2>
-    <span class="text-muted">Your role: <strong>{{ current_user.role }}</strong></span>
+    <span class="text-muted">Signed in as <strong>{{ current_user.role }}</strong></span>
   </div>
   {% if current_user.role == 'owner' %}
-  <a class="btn btn-primary" href="{{ url_for('documents.upload') }}">Upload document</a>
+  <a class="btn btn-primary" href="{{ url_for('documents.upload') }}">+ Upload document</a>
   {% endif %}
 </div>
 
-<form method="get" class="row g-2 mb-3">
-  <div class="col-md-3"><input class="form-control" name="q" placeholder="Name contains..." value="{{ filters.q }}"></div>
-  <div class="col-md-2"><select class="form-select" name="category">
-    <option value="">All categories</option>
-    {% for c in categories %}<option value="{{ c }}" {% if filters.category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
-  </select></div>
-  <div class="col-md-2"><input class="form-control" name="owner" placeholder="Owner" value="{{ filters.owner }}"></div>
-  <div class="col-md-2"><input class="form-control" type="date" name="from" value="{{ filters.date_from }}" title="From date"></div>
-  <div class="col-md-2"><input class="form-control" type="date" name="to" value="{{ filters.date_to }}" title="To date"></div>
-  <div class="col-md-1"><button class="btn btn-secondary w-100">Go</button></div>
-</form>
+<div class="row g-3 mb-3">
+  <div class="col-sm-4"><div class="stat"><div class="num">{{ items|length }}</div><div class="lbl">Documents you can open</div></div></div>
+</div>
 
-<h5>Documents you can access</h5>
+<div class="card-tv mb-3">
+  <form method="get" class="row g-2">
+    <div class="col-md-3"><input class="form-control" name="q" placeholder="Name contains..." value="{{ filters.q }}"></div>
+    <div class="col-md-2"><select class="form-select" name="category">
+      <option value="">All categories</option>
+      {% for c in categories %}<option value="{{ c }}" {% if filters.category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+    </select></div>
+    <div class="col-md-2"><input class="form-control" name="owner" placeholder="Owner" value="{{ filters.owner }}"></div>
+    <div class="col-md-2"><input class="form-control" type="date" name="from" value="{{ filters.date_from }}" title="From date"></div>
+    <div class="col-md-2"><input class="form-control" type="date" name="to" value="{{ filters.date_to }}" title="To date"></div>
+    <div class="col-md-1"><button class="btn btn-secondary w-100">Go</button></div>
+  </form>
+</div>
+
+<div class="card-tv p-0 overflow-hidden">
 {% if items %}
-<table class="table table-striped bg-white">
-  <thead><tr><th>Name</th><th>Category</th><th>Owner</th><th>Your access</th><th>Size</th><th>Uploaded</th><th></th></tr></thead>
+<div class="table-responsive">
+<table class="table table-hover tv-table">
+  <thead><tr><th>Name</th><th>Category</th><th>Owner</th><th>Access</th><th>Size</th><th>Uploaded</th><th></th></tr></thead>
   <tbody>
   {% for d, perm in items %}
     <tr>
-      <td>{{ d.original_name }}</td>
+      <td class="fw-semibold">{{ d.original_name }}</td>
       <td>{{ d.category }}</td>
       <td>{{ d.owner.name }}</td>
-      <td>{{ perm }}</td>
+      <td><span class="access {{ perm }}">{{ perm }}</span></td>
       <td>{{ (d.size_bytes / 1024)|round(1) }} KB</td>
       <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-      <td class="text-end">
+      <td class="text-end text-nowrap">
         <a class="btn btn-sm btn-outline-primary" href="{{ url_for('documents.download', doc_id=d.id) }}">Download</a>
         {% if perm in ('owner', 'edit') %}
         <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('documents.edit', doc_id=d.id) }}">Edit</a>
@@ -54,7 +61,9 @@
   {% endfor %}
   </tbody>
 </table>
+</div>
 {% else %}
-<p class="text-muted">No documents found.</p>
+<div class="empty-state">No documents found.</div>
 {% endif %}
+</div>
 {% endblock %}
