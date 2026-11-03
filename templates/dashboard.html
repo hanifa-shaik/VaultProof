@@ -11,54 +11,50 @@
   {% endif %}
 </div>
 
-{% if current_user.role == 'owner' %}
-<h5>Your documents</h5>
-{% if docs %}
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-3"><input class="form-control" name="q" placeholder="Name contains..." value="{{ filters.q }}"></div>
+  <div class="col-md-2"><select class="form-select" name="category">
+    <option value="">All categories</option>
+    {% for c in categories %}<option value="{{ c }}" {% if filters.category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select></div>
+  <div class="col-md-2"><input class="form-control" name="owner" placeholder="Owner" value="{{ filters.owner }}"></div>
+  <div class="col-md-2"><input class="form-control" type="date" name="from" value="{{ filters.date_from }}" title="From date"></div>
+  <div class="col-md-2"><input class="form-control" type="date" name="to" value="{{ filters.date_to }}" title="To date"></div>
+  <div class="col-md-1"><button class="btn btn-secondary w-100">Go</button></div>
+</form>
+
+<h5>Documents you can access</h5>
+{% if items %}
 <table class="table table-striped bg-white">
-  <thead><tr><th>Name</th><th>Category</th><th>Size</th><th>Uploaded</th><th></th></tr></thead>
+  <thead><tr><th>Name</th><th>Category</th><th>Owner</th><th>Your access</th><th>Size</th><th>Uploaded</th><th></th></tr></thead>
   <tbody>
-  {% for d in docs %}
+  {% for d, perm in items %}
     <tr>
       <td>{{ d.original_name }}</td>
       <td>{{ d.category }}</td>
+      <td>{{ d.owner.name }}</td>
+      <td>{{ perm }}</td>
       <td>{{ (d.size_bytes / 1024)|round(1) }} KB</td>
       <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
       <td class="text-end">
         <a class="btn btn-sm btn-outline-primary" href="{{ url_for('documents.download', doc_id=d.id) }}">Download</a>
+        {% if perm in ('owner', 'edit') %}
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('documents.edit', doc_id=d.id) }}">Edit</a>
+        {% endif %}
+        {% if perm == 'owner' %}
         <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('documents.share', doc_id=d.id) }}">Share</a>
         <form method="post" action="{{ url_for('documents.delete', doc_id=d.id) }}" class="d-inline"
               onsubmit="return confirm('Delete this document?');">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-sm btn-outline-danger">Delete</button>
         </form>
+        {% endif %}
       </td>
     </tr>
   {% endfor %}
   </tbody>
 </table>
 {% else %}
-<p class="text-muted">No documents yet.</p>
-{% endif %}
-{% endif %}
-
-<h5 class="mt-4">Shared with you</h5>
-{% if shared %}
-<table class="table table-striped bg-white">
-  <thead><tr><th>Name</th><th>Owner</th><th>Your access</th><th></th></tr></thead>
-  <tbody>
-  {% for d, perm in shared %}
-    <tr>
-      <td>{{ d.original_name }}</td>
-      <td>{{ d.owner.name }}</td>
-      <td>{{ perm }}</td>
-      <td class="text-end">
-        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('documents.download', doc_id=d.id) }}">Download</a>
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% else %}
-<p class="text-muted">Nothing has been shared with you.</p>
+<p class="text-muted">No documents found.</p>
 {% endif %}
 {% endblock %}

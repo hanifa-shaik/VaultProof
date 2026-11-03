@@ -246,3 +246,63 @@ def revoke(doc_id, grant_id):
               detail=f"{g.permission} removed from {g.user.email}")
     flash("Access removed.", "success")
     return redirect(url_for("documents.share", doc_id=doc.id))
+
+@bp.route("/documents/<doc_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit(doc_id):
+    # "edit" permission: the owner, or someone with an edit grant.
+    doc = load_or_404(doc_id, "edit", "edit")
+    old_ext = doc.original_name.rsplit(".", 1)[-1].lower()
+
+    if request.method == "GET":
+        return render_template("edit.html", doc=doc, old_ext=old_ext)
+
+    def refuse_edit(message, reason):
+        log_event("edit", "denied", actor=current_user, document_id=doc.id,
+                  detail=reason[:200])
+        flash(message, "danger")
+        return render_template("edit.html", doc=doc, old_ext=old_ext), 400
+
+    f = request.files.get("file")
+    if f is None or not f.filename:
+        return refuse_edit("Please choose a file.", "no file")
+
+    name = secure_filename(f.filename)
+    ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+    if ext != old_ext:
+        return refuse_edit(f"The new file must be a .{old_ext} file, like the original.",
+                           "different type: " + (ext or "none"))
+
+    data = f.read()
+    if len(data) == 0:
+        return refuse_edit("The file is empty.", "empty file")
+    if not content_matches(ext, data):
+        return refuse_edit("The file contents do not match its type.", "content mismatch")
+
+    # Write the new file under a new random name, then switch the record over.
+    new_storage = new_id()
+    new_path = os.path.join(vault_dir(), new_storage)
+    with open(new_path, "wb") as out:
+        out.write(data)
+
+    old_path = os.path.join(vault_dir(), doc.storage_name)
+    old_hash = doc.sha256
+    doc.storage_name = new_storage
+    doc.size_bytes = len(data)
+    doc.sha256 = hashlib.sha256(data).hexdigest()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        os.remove(new_path)
+        raise
+
+    try:
+        os.remove(old_path)
+    except OSError:
+        pass
+
+    log_event("edit", "allowed", actor=current_user, document_id=doc.id,
+              detail=f"{doc.original_name}: {old_hash[:12]} -> {doc.sha256[:12]}")
+    flash("Document updated.", "success")
+    return redirect(url_for("dashboard"))
