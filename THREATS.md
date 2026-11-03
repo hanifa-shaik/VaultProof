@@ -19,9 +19,11 @@ Only things that exist in the code are marked Done. Everything else says Planned
 | 13 | Stored file changed on disk | Done | SHA-256 fingerprint is checked on every download |
 | 14 | Uploaded file runs as a page in the browser | Done | Served as an attachment with `nosniff`, never from a public folder |
 | 15 | Someone other than the owner deletes a document | Done | `delete` calls `authorize()`. POST-only with a CSRF token |
-| 16 | Granting access to other users | Planned | Not built yet. Only owners can reach their own documents today |
 | 16 | Granting access to other users | Done | Owners grant read or edit by email. Stored in the `grants` table. Every grant and revoke is audited |
 | 17 | Access still works after being revoked | Done | `authorize()` checks the database on every request, so old links stop working at once. Tested by hand: viewer's saved download link gave 404 after revoke |
 | 18 | A person with read access shares or deletes the document | Done | Share and delete are owner-only in `authorize()`. A grant can never allow them |
 | 19 | Owner learns which emails have accounts by trying to share | Accepted | The share form says "Could not share" for any bad email, but a successful share confirms the account exists. Low risk: only document owners can use it |
-| 20 | Edit permission has no effect yet | Planned | `authorize()` supports "edit", but there is no edit route yet. Next part |
+| 20 | A person with only read access changes a document | Done | The edit route calls `authorize(..., "edit")`. A read grant is refused with 404 and an audit row. Tested by hand |
+| 21 | An edit swaps a document for a different file type | Done | The new file must have the same extension as the original and pass the content check |
+| 22 | Search shows documents the person was not given | Done | Search filters a list already built from `authorize()`, so it can never add documents. Tested with a second owner |
+| 23 | No version history: an edit replaces the old file | Accepted | The old file is deleted. The audit log records the old and new fingerprints. Versions are not built |
