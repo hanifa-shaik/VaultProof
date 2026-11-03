@@ -27,3 +27,5 @@ Only things that exist in the code are marked Done. Everything else says Planned
 | 21 | An edit swaps a document for a different file type | Done | The new file must have the same extension as the original and pass the content check |
 | 22 | Search shows documents the person was not given | Done | Search filters a list already built from `authorize()`, so it can never add documents. Tested with a second owner |
 | 23 | No version history: an edit replaces the old file | Accepted | The old file is deleted. The audit log records the old and new fingerprints. Versions are not built |
+| 24 | Tests still pass after a permission check is removed | Done | Removed the `authorize()` call from `load_or_404`: 14 tests failed. Removed the owner check in `authorize()`: 8 tests failed. Removed the revoked-grant filter: N tests failed. Each break was undone with git |
+| 25 | Forged form posts from other websites | Done | CSRF is on in the app. It is switched off only in the test configuration |
