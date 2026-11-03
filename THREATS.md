@@ -29,3 +29,8 @@ Only things that exist in the code are marked Done. Everything else says Planned
 | 23 | No version history: an edit replaces the old file | Accepted | The old file is deleted. The audit log records the old and new fingerprints. Versions are not built |
 | 24 | Tests still pass after a permission check is removed | Done | Removed the `authorize()` call from `load_or_404`: 14 tests failed. Removed the owner check in `authorize()`: 8 tests failed. Removed the revoked-grant filter: 1 test failed (`test_revoke_takes_effect_immediately`). Each break was undone with git |
 | 25 | Revocation is covered by only one test | Accepted | One test proves a revoked person loses access at once. A second, separate test would be stronger. Planned if time allows |
+| 26 | Uploaded files lost or exposed on the hosting disk | Done | Files are stored as rows in the database (`file_blobs`), not as files on disk. Nothing is served from a folder. Only code that passes `authorize()` reads them |
+| 27 | Secret key left at the development default when live | Done | The app refuses to start in production without `SECRET_KEY` |
+| 28 | Audit log shows the proxy's address instead of the user's | Done | `ProxyFix` reads the real client address, in production only |
+| 29 | Deleted documents stay in the database | Accepted | Delete is a soft delete so documents can be recovered. A permanent purge is not built |
+| 30 | File contents are stored unencrypted in the database | Accepted | The database is private and reached only through the app. Encryption at rest is not built |

@@ -92,3 +92,10 @@ class Grant(db.Model):
 
     document = db.relationship("Document", backref="grants")
     user = db.relationship("User", foreign_keys=[user_id])
+class FileBlob(db.Model):
+    """The bytes of an uploaded file. Only code that has passed authorize()
+    ever reads this table."""
+    __tablename__ = "file_blobs"
+
+    storage_name = db.Column(db.String(64), primary_key=True)
+    data = db.Column(db.LargeBinary, nullable=False)

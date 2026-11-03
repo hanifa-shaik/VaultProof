@@ -1,16 +1,15 @@
 import hashlib
 import io
-import os
 import zipfile
 
-from flask import (Blueprint, abort, current_app, flash, redirect,
-                   render_template, request, send_file, url_for)
+from flask import (Blueprint, abort, flash, redirect, render_template,
+                   request, send_file, url_for)
 from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 
 from audit import log_event
 from extensions import db
-from models import Document, Grant, User, new_id, utcnow
+from models import Document, FileBlob, Grant, User, new_id, utcnow
 from permissions import authorize
 
 bp = Blueprint("documents", __name__)
@@ -26,13 +25,6 @@ ALLOWED = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 CATEGORIES = ("general", "contract", "hr", "finance", "legal", "drawing", "audit")
-
-
-def vault_dir():
-    """Private folder. It is inside instance/, which Flask never serves."""
-    path = os.path.join(current_app.instance_path, "vault")
-    os.makedirs(path, exist_ok=True)
-    return path
 
 
 def content_matches(ext, data):
@@ -105,11 +97,7 @@ def upload():
         return refuse("The file contents do not match its type.",
                       "content mismatch", name)
 
-    storage_name = new_id()          # random name on disk
-    path = os.path.join(vault_dir(), storage_name)
-    with open(path, "wb") as out:
-        out.write(data)
-
+    storage_name = new_id()          # random name for the stored bytes
     doc = Document(
         owner_id=current_user.id,
         original_name=name[:255],
@@ -120,11 +108,11 @@ def upload():
         storage_name=storage_name,
     )
     db.session.add(doc)
+    db.session.add(FileBlob(storage_name=storage_name, data=data))
     try:
-        db.session.commit()
+        db.session.commit()          # document row and bytes saved together
     except Exception:
         db.session.rollback()
-        os.remove(path)              # do not leave an orphan file behind
         raise
 
     log_event("upload", "allowed", actor=current_user, document_id=doc.id,
@@ -150,14 +138,12 @@ def load_or_404(doc_id, permission, event):
 def download(doc_id):
     doc = load_or_404(doc_id, "read", "download")
 
-    path = os.path.join(vault_dir(), doc.storage_name)
-    try:
-        with open(path, "rb") as fh:
-            data = fh.read()
-    except FileNotFoundError:
+    blob = db.session.get(FileBlob, doc.storage_name)
+    if blob is None:
         log_event("download", "denied", actor=current_user,
-                  document_id=doc.id, detail="file missing on disk")
+                  document_id=doc.id, detail="stored file missing")
         abort(404)
+    data = bytes(blob.data)
 
     # The file must still match the fingerprint stored at upload.
     if hashlib.sha256(data).hexdigest() != doc.sha256:
@@ -179,12 +165,13 @@ def download(doc_id):
 @login_required
 def delete(doc_id):
     doc = load_or_404(doc_id, "delete", "delete")
-    doc.deleted_at = utcnow()          # soft delete: the row is kept
+    doc.deleted_at = utcnow()          # soft delete: the row and bytes are kept
     db.session.commit()
     log_event("delete", "allowed", actor=current_user,
               document_id=doc.id, detail=doc.original_name)
     flash("Document deleted.", "success")
     return redirect(url_for("dashboard"))
+
 
 @bp.route("/documents/<doc_id>/share")
 @login_required
@@ -247,6 +234,7 @@ def revoke(doc_id, grant_id):
     flash("Access removed.", "success")
     return redirect(url_for("documents.share", doc_id=doc.id))
 
+
 @bp.route("/documents/<doc_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit(doc_id):
@@ -279,14 +267,15 @@ def edit(doc_id):
     if not content_matches(ext, data):
         return refuse_edit("The file contents do not match its type.", "content mismatch")
 
-    # Write the new file under a new random name, then switch the record over.
-    new_storage = new_id()
-    new_path = os.path.join(vault_dir(), new_storage)
-    with open(new_path, "wb") as out:
-        out.write(data)
-
-    old_path = os.path.join(vault_dir(), doc.storage_name)
+    # Save the new bytes under a new random name and drop the old bytes,
+    # all in ONE database transaction.
+    old_storage = doc.storage_name
     old_hash = doc.sha256
+    new_storage = new_id()
+    db.session.add(FileBlob(storage_name=new_storage, data=data))
+    old_blob = db.session.get(FileBlob, old_storage)
+    if old_blob is not None:
+        db.session.delete(old_blob)
     doc.storage_name = new_storage
     doc.size_bytes = len(data)
     doc.sha256 = hashlib.sha256(data).hexdigest()
@@ -294,13 +283,7 @@ def edit(doc_id):
         db.session.commit()
     except Exception:
         db.session.rollback()
-        os.remove(new_path)
         raise
-
-    try:
-        os.remove(old_path)
-    except OSError:
-        pass
 
     log_event("edit", "allowed", actor=current_user, document_id=doc.id,
               detail=f"{doc.original_name}: {old_hash[:12]} -> {doc.sha256[:12]}")
