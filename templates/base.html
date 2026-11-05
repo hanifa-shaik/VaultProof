@@ -14,6 +14,7 @@
     {% if current_user.is_authenticated %}
     <form method="post" action="{{ url_for('auth.logout') }}" class="d-flex align-items-center gap-3 m-0">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if current_user.role == 'admin' %}<a class="btn btn-sm btn-outline-light" href="{{ url_for('admin.home') }}">Admin</a>{% endif %}
       <span class="tv-user">{{ current_user.name }} <span class="role-pill ms-1">{{ current_user.role }}</span></span>
       <button class="btn btn-outline-light btn-sm">Log out</button>
     </form>

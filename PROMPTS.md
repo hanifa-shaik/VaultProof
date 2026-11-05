@@ -31,3 +31,15 @@ The login page then loaded.
 
 **What I learned:** Flask finds templates by folder location, so where
 a file lives matters, not just what is inside it.
+
+## 2026-11-05: AI claimed a disabled user's session would stay valid
+
+**What I asked:** I asked the AI for the next hardening steps for access control.
+
+**What it produced:** A plan saying a disabled user's existing login would keep working, and that my test would fail until I fixed it.
+
+**What was wrong:** The claim was never checked. I wrote the test first. It passed (42 passed), because Flask-Login already treats a disabled user as logged out. The AI had stated an authorisation gap that did not exist.
+
+**What I did instead:** I kept the test as a guard against future breakage, and kept an explicit active check in the user loader as defence in depth.
+
+**Commit:** https://github.com/hanifa-shaik/TrustVault/commit/3fe71ab26247dfeee4912a72f2d0094f1d5ec01a
