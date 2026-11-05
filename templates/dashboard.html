@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block wclass %}w-wide{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="page-head">
   <div>
-    <h2 class="mb-0">Welcome, {{ current_user.name }}</h2>
-    <span class="text-muted">Signed in as <strong>{{ current_user.role }}</strong></span>
+    <h2>Welcome, {{ current_user.name }}</h2>
+    <div class="sub">Signed in as <strong>{{ current_user.role }}</strong> &middot; your private vault</div>
   </div>
   {% if current_user.role == 'owner' %}
   <a class="btn btn-primary" href="{{ url_for('documents.upload') }}">+ Upload document</a>
@@ -15,7 +15,7 @@
   <div class="col-sm-4"><div class="stat"><div class="num">{{ items|length }}</div><div class="lbl">Documents you can open</div></div></div>
 </div>
 
-<div class="card-tv mb-3">
+<div class="card-tv mb-3 p-3">
   <form method="get" class="row g-2">
     <div class="col-md-3"><input class="form-control" name="q" placeholder="Name contains..." value="{{ filters.q }}"></div>
     <div class="col-md-2"><select class="form-select" name="category">

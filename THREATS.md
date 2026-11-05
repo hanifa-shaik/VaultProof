@@ -1,36 +1,49 @@
-# TrustVault - Security Threats
+# TrustVault - Threats
 
-Only things that exist in the code are marked Done. Everything else says Planned or Accepted.
+Done = built. Tested = an automated test fails if it breaks. Checked live = I checked it by hand on the deployed site. Accepted = I know and chose to leave it. Not built = left out on purpose.
 
 | # | Threat | Status | What I did |
 |---|--------|--------|------------|
-| 1 | Unauthorized document access | Planned | Roles exist, but document permissions are not built yet. Plan: one `authorize()` function that denies by default, called by every route |
-| 2 | Password theft | Done | Passwords are hashed, never stored as plain text |
-| 3 | Cross-site request forgery (CSRF) | Done | Flask-WTF CSRF token is required on every POST |
-| 4 | Someone registers as admin by editing the form | Done | Server checks the role against an allow-list (owner, viewer only) |
-| 5 | Open redirect through the login `next` parameter | Done | `is_safe_next` allows only paths on our own site |
-| 6 | Attacker learns which emails have accounts | Partly done | Same login error for every failure. Timing may still differ (accepted, low risk) |
-| 7 | Password guessing | Planned | Rate limiting not built yet |
-| 8 | Logins and actions not recorded | Planned | `log_event` exists, but no route calls it yet |
-| 9 | Someone edits the audit log to hide activity | Partly done | Rows are hash-chained and `verify_chain` detects edits. Not yet blocked: someone with full database access could rebuild the chain. Planned: a database rule against UPDATE and DELETE, plus a saved checkpoint |
-| 10 | Malicious or disguised file upload | Done | Extension allow-list, real content check (file signature), size limit, empty-file check, random storage name, refused uploads logged. Tested by hand with .zip and an empty file (add the others once you have run them) |
-| 11 | A user opens another user's document by pasting its link | Done (owner-only for now) | Every download calls `authorize()`. Anyone else gets 404 and a `denied` audit row. Tested by hand with two owners |
-| 12 | Guessing document IDs | Done | IDs are random UUIDs. "Not yours" and "does not exist" give the same 404 |
-| 13 | Stored file changed on disk | Done | SHA-256 fingerprint is checked on every download |
-| 14 | Uploaded file runs as a page in the browser | Done | Served as an attachment with `nosniff`, never from a public folder |
-| 15 | Someone other than the owner deletes a document | Done | `delete` calls `authorize()`. POST-only with a CSRF token |
-| 16 | Granting access to other users | Done | Owners grant read or edit by email. Stored in the `grants` table. Every grant and revoke is audited |
-| 17 | Access still works after being revoked | Done | `authorize()` checks the database on every request, so old links stop working at once. Tested by hand: viewer's saved download link gave 404 after revoke |
-| 18 | A person with read access shares or deletes the document | Done | Share and delete are owner-only in `authorize()`. A grant can never allow them |
-| 19 | Owner learns which emails have accounts by trying to share | Accepted | The share form says "Could not share" for any bad email, but a successful share confirms the account exists. Low risk: only document owners can use it |
-| 20 | A person with only read access changes a document | Done | The edit route calls `authorize(..., "edit")`. A read grant is refused with 404 and an audit row. Tested by hand |
-| 21 | An edit swaps a document for a different file type | Done | The new file must have the same extension as the original and pass the content check |
-| 22 | Search shows documents the person was not given | Done | Search filters a list already built from `authorize()`, so it can never add documents. Tested with a second owner |
-| 23 | No version history: an edit replaces the old file | Accepted | The old file is deleted. The audit log records the old and new fingerprints. Versions are not built |
-| 24 | Tests still pass after a permission check is removed | Done | Removed the `authorize()` call from `load_or_404`: 14 tests failed. Removed the owner check in `authorize()`: 8 tests failed. Removed the revoked-grant filter: 1 test failed (`test_revoke_takes_effect_immediately`). Each break was undone with git |
-| 25 | Revocation is covered by only one test | Accepted | One test proves a revoked person loses access at once. A second, separate test would be stronger. Planned if time allows |
-| 26 | Uploaded files lost or exposed on the hosting disk | Done | Files are stored as rows in the database (`file_blobs`), not as files on disk. Nothing is served from a folder. Only code that passes `authorize()` reads them |
-| 27 | Secret key left at the development default when live | Done | The app refuses to start in production without `SECRET_KEY` |
-| 28 | Audit log shows the proxy's address instead of the user's | Done | `ProxyFix` reads the real client address, in production only |
-| 29 | Deleted documents stay in the database | Accepted | Delete is a soft delete so documents can be recovered. A permanent purge is not built |
-| 30 | File contents are stored unencrypted in the database | Accepted | The database is private and reached only through the app. Encryption at rest is not built |
+| 1 | Reading another person's document by pasting its link | Done, tested | Every download calls `authorize()` through `load_or_404`. Others get 404 and a denied audit row |
+| 2 | Guessing document IDs | Done, tested | Random UUIDs. "Not yours" and "does not exist" give an identical 404 |
+| 3 | Editing, sharing, granting, revoking or deleting through another route | Done, tested | All these routes use `load_or_404`. One test per route |
+| 4 | A read grant used to edit | Done, tested | `authorize()` allows edit only for the owner or an edit grant |
+| 5 | An edit grant used to share or delete | Done, tested | Share and delete are owner-only |
+| 6 | Access after revoke | Done, tested | No tokens or links to expire. The grant is read from the database on every request. Checked by hand with a saved link |
+| 7 | Expired grants | Partly done, tested | Expiry is enforced in `authorize()`. There is no screen to set an expiry yet |
+| 8 | Old login works after an account is disabled | Done, tested | The user loader treats a disabled account as logged out. My test passed, which showed the AI's claim of a gap was wrong |
+| 9 | Search or dashboard shows documents not given | Done, tested | Lists are built from `authorize()` first, then filtered |
+| 10 | Admin reads file contents | Done, tested | The admin role has no path in `authorize()`, and the admin pages never read file bytes |
+| 11 | Non-admin opens admin pages | Done, tested, checked live | `admin_only` returns 404 and records the attempt |
+| 12 | Becoming an admin at registration | Done, tested | Allow-list of roles. The attempt is logged |
+| 13 | Passwords stolen from the database | Done | Hashed with Werkzeug, never stored as text |
+| 14 | Password guessing | Done, tested, checked live | 5 failures per email and address, or 20 per address, in 15 minutes gives 429. Someone with many addresses is not stopped (accepted) |
+| 15 | Learning which emails have accounts | Partly done | Same login message for all failures. Timing may differ. A successful share confirms an account exists to owners (accepted) |
+| 16 | Forged form posts (CSRF) | Done | Flask-WTF token on every POST. It is switched off only in tests, so no automated test covers it |
+| 17 | Open redirect through `next` | Done, tested | `is_safe_next` |
+| 18 | Logout by plain link | Done, tested | Logout is POST only |
+| 19 | Disallowed upload type | Done, tested | Extension allow-list |
+| 20 | Disguised file (text renamed .pdf or .png) | Done, tested | File signature check |
+| 21 | Empty or oversized upload | Done | Empty refused (tested). The 10 MB limit is set but not tested |
+| 22 | Path tricks in file names | Done, tested | `secure_filename` and a random storage name |
+| 23 | Uploaded file runs in the browser | Done | Sent as an attachment with `nosniff`, content type from my own list. Not tested |
+| 24 | Files readable from disk or a public URL | Done | File bytes live in the database. No folder is served |
+| 25 | Stored file altered | Done | SHA-256 checked on every download. Not tested |
+| 26 | Audit log edited or deleted | Done, tested, checked live | Hash chain and a verify button (tested). PostgreSQL triggers refuse UPDATE, DELETE and TRUNCATE. I ran an UPDATE on the live database and got `audit_log is append-only` |
+| 27 | Newest audit rows removed | Partly done | A chain alone cannot show this. The triggers block it, and the admin page shows a fingerprint I copied outside the system |
+| 28 | Two requests fork the audit chain | Done | Advisory lock on PostgreSQL. Not testable on SQLite |
+| 29 | Refused attempts not recorded | Done, tested, checked live | Denied rows for downloads, edits, deletes, grants, uploads, logins and admin access |
+| 30 | Secrets in the repository | Done | Keys only in Render settings. The app refuses to start in production without `SECRET_KEY`. Incident: a command printed a dev key, I photographed it, and I replaced it before deploying |
+| 31 | Cookie theft | Done | HttpOnly, SameSite Lax, Secure in production, HTTPS. Not tested |
+| 32 | Clickjacking, sniffing, cached pages | Done, tested | `X-Frame-Options`, `nosniff`, `no-store`, HSTS in production |
+| 33 | Script injection (XSS) | Done | Jinja escapes output. No Content-Security-Policy yet (accepted) |
+| 34 | Wrong IP in the audit log behind the proxy | Done | `ProxyFix` in production |
+| 35 | Tests still pass after a check is removed | Done | Removed the `authorize()` call: 14 failed. Removed the owner check: 8 failed. Removed the revoked-grant filter: 1 failed. Removed the admin gate: 2 failed. Each undone with git |
+| 36 | Demo passwords are public in the README | Accepted | The brief requires them. They are throwaway and I will change them after judging |
+| 37 | Revocation is covered by only one automated test | Accepted | The by-hand test backs it up |
+| 38 | Deleted documents stay stored | Accepted | Soft delete so they can be recovered. No purge |
+| 39 | File contents not encrypted at rest | Accepted | The database is private and reached only through the app |
+| 40 | Someone with database owner rights could drop the triggers | Accepted | A separate database role would fix it. Not done |
+| 41 | Free hosting sleeps and has storage limits | Accepted | First load takes about a minute. The README warns judges |
+| 42 | Tests run on SQLite, production runs PostgreSQL | Accepted | Triggers and locks are PostgreSQL only and checked by hand |
+| 43 | Outside sharing, versions, retention, AI suggestions, MFA, password reset | Not built | Left out so the permission model stays small and tested |
