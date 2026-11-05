@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block wclass %}w-wide{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="mb-0">Administration</h2>
+  <a class="btn btn-outline-primary" href="{{ url_for('admin.audit') }}">Full audit log</a>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3"><div class="stat"><div class="num">{{ stats.users }}</div><div class="lbl">Users</div></div></div>
+  <div class="col-6 col-md-3"><div class="stat"><div class="num">{{ stats.documents }}</div><div class="lbl">Documents</div></div></div>
+  <div class="col-6 col-md-3"><div class="stat"><div class="num">{{ stats.grants }}</div><div class="lbl">Active grants</div></div></div>
+  <div class="col-6 col-md-3"><div class="stat"><div class="num">{{ stats.refused }}</div><div class="lbl">Refused (24h)</div></div></div>
+</div>
+
+<div class="card-tv mb-3">
+  <h5>Security alerts (last 24 hours)</h5>
+  {% if alerts %}
+    <ul class="mb-0">{% for a in alerts %}<li class="text-danger">{{ a }}</li>{% endfor %}</ul>
+  {% else %}
+    <p class="text-muted mb-0">Nothing unusual.</p>
+  {% endif %}
+</div>
+
+<div class="card-tv mb-3">
+  <h5>Audit integrity</h5>
+  <p class="mb-1 text-muted">Newest row: <strong>#{{ head_id }}</strong>. Its fingerprint:</p>
+  <code class="text-break">{{ head_hash }}</code>
+  <form method="post" action="{{ url_for('admin.verify') }}" class="mt-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-primary">Verify audit integrity</button>
+  </form>
+  <p class="text-muted small mt-2 mb-0">Copy the fingerprint somewhere outside this system. If the newest rows were ever removed, it would no longer match.</p>
+</div>
+
+<div class="card-tv p-0 overflow-hidden mb-3">
+  <h5 class="p-3 pb-0">Documents (names and details only, never contents)</h5>
+  <div class="table-responsive"><table class="table tv-table">
+    <thead><tr><th>Name</th><th>Owner</th><th>Category</th><th>Size</th><th>Uploaded</th><th>Shared with</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for d in docs %}
+      <tr>
+        <td><a href="{{ url_for('admin.audit', doc=d.id) }}">{{ d.original_name }}</a></td>
+        <td>{{ d.owner.name }}</td><td>{{ d.category }}</td>
+        <td>{{ (d.size_bytes / 1024)|round(1) }} KB</td>
+        <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{{ shared_count.get(d.id, 0) }}</td>
+        <td>{{ 'deleted' if d.deleted_at else 'active' }}</td>
+      </tr>
+    {% else %}<tr><td colspan="7" class="empty-state">No documents.</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+</div>
+
+<div class="card-tv p-0 overflow-hidden">
+  <h5 class="p-3 pb-0">Users</h5>
+  <div class="table-responsive"><table class="table tv-table">
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.name }}</td><td>{{ u.email }}</td><td>{{ u.role }}</td>
+        <td>{{ 'active' if u.active else 'disabled' }}</td>
+        <td class="text-end">
+          {% if u.role != 'admin' and u.id != current_user.id %}
+          <form method="post" action="{{ url_for('admin.toggle_user', user_id=u.id) }}" class="d-inline"
+                onsubmit="return confirm('Change this account?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-secondary">{{ 'Disable' if u.active else 'Enable' }}</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody></table></div>
+</div>
+{% endblock %}

@@ -17,7 +17,7 @@ def parse_date(value):
 def create_app(config_object=Config):
     app = Flask(__name__)
     app.config.from_object(config_object)
-    
+
     if app.config.get("IS_PRODUCTION"):
         from werkzeug.middleware.proxy_fix import ProxyFix
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
@@ -28,16 +28,32 @@ def create_app(config_object=Config):
     login_manager.login_view = "auth.login"
 
     import models
+    from admin import bp as admin_bp
     from auth import bp as auth_bp
     from documents import CATEGORIES, bp as documents_bp
     from permissions import authorize
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(documents_bp)
+    app.register_blueprint(admin_bp)
 
     @login_manager.user_loader
     def load_user(user_id):
-        return db.session.get(models.User, user_id)
+        # A disabled account is treated as logged out on its very next request.
+        user = db.session.get(models.User, user_id)
+        return user if user is not None and user.active else None
+
+    @app.after_request
+    def security_headers(resp):
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resp.headers.setdefault("X-Frame-Options", "DENY")
+        resp.headers.setdefault("Referrer-Policy", "same-origin")
+        resp.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        if request.endpoint != "static":
+            resp.headers.setdefault("Cache-Control", "no-store")
+        if app.config.get("IS_PRODUCTION"):
+            resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+        return resp
 
     @app.route("/")
     def home():
@@ -48,6 +64,9 @@ def create_app(config_object=Config):
     @app.route("/dashboard")
     @login_required
     def dashboard():
+        if current_user.role == "admin":
+            return redirect(url_for("admin.home"))
+
         # Step 1: collect only documents this person may read.
         # authorize() has the final say, so search can never show more.
         items = []
@@ -100,6 +119,12 @@ def create_app(config_object=Config):
 
     with app.app_context():
         db.create_all()
+        try:
+            from audit import install_guards
+            install_guards()
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Could not install audit guards")
 
     return app
 

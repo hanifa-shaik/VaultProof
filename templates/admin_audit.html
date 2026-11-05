@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block wclass %}w-wide{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="mb-0">Audit log</h2>
+  <a class="btn btn-outline-secondary" href="{{ url_for('admin.home') }}">&larr; Admin home</a>
+</div>
+
+<div class="card-tv mb-3">
+  <form method="get" class="row g-2">
+    <div class="col-md-3"><select class="form-select" name="action">
+      <option value="">All actions</option>
+      {% for a in actions %}<option value="{{ a }}" {% if f.action == a %}selected{% endif %}>{{ a }}</option>{% endfor %}
+    </select></div>
+    <div class="col-md-2"><select class="form-select" name="outcome">
+      <option value="">Any outcome</option>
+      <option value="allowed" {% if f.outcome == 'allowed' %}selected{% endif %}>allowed</option>
+      <option value="denied" {% if f.outcome == 'denied' %}selected{% endif %}>denied</option>
+    </select></div>
+    <div class="col-md-3"><input class="form-control" name="who" placeholder="Person's email" value="{{ f.who }}"></div>
+    <div class="col-md-3"><input class="form-control" name="doc" placeholder="Document ID" value="{{ f.doc }}"></div>
+    <div class="col-md-1"><button class="btn btn-secondary w-100">Go</button></div>
+  </form>
+  <div class="mt-2 small">Quick views:
+    <a href="{{ url_for('admin.audit', action='grant') }}">grants</a> |
+    <a href="{{ url_for('admin.audit', action='revoke') }}">revokes</a> |
+    <a href="{{ url_for('admin.audit', outcome='denied') }}">all refused</a> |
+    <a href="{{ url_for('admin.audit', action='download') }}">downloads</a>
+  </div>
+</div>
+
+<div class="card-tv p-0 overflow-hidden">
+  <div class="table-responsive"><table class="table tv-table table-sm">
+    <thead><tr><th>#</th><th>Time (UTC)</th><th>Person</th><th>Action</th><th>Outcome</th><th>Document</th><th>Detail</th><th>IP</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.ts[:19].replace('T', ' ') }}</td>
+        <td>{{ r.actor_email or '-' }}</td>
+        <td>{{ r.action }}</td>
+        <td><span class="access {{ 'read' if r.outcome == 'allowed' else 'edit' }}">{{ r.outcome }}</span></td>
+        <td>{% if r.document_id %}<a href="{{ url_for('admin.audit', doc=r.document_id) }}">{{ r.document_id[:8] }}</a>{% else %}-{% endif %}</td>
+        <td>{{ r.detail }}</td>
+        <td>{{ r.ip or '-' }}</td>
+      </tr>
+    {% else %}<tr><td colspan="8" class="empty-state">No matching events.</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+</div>
+<p class="text-muted small mt-2">Showing the newest 200 matching events.</p>
+{% endblock %}
