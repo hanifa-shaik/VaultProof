@@ -33,7 +33,7 @@ Uploads, downloads, edits, deletions, grants, revokes, logins, registrations, ad
 
 
 ## What I built
-Registration and login with roles, upload with content checks, per-document read and edit grants, immediate revocation, search by name, owner, category and date, edit, soft delete, an audit log with a hash chain and database triggers, an admin dashboard with alerts and an integrity check, login rate limiting, security headers, and 51 automated tests.
+Registration and login with roles, upload with content checks, per-document read and edit grants, immediate revocation, search by name, owner, category and date, edit, soft delete, an audit log with a hash chain and database triggers, an admin dashboard with alerts and an integrity check, login rate limiting, security headers, and 56 automated tests.
 
 ## What I deliberately did not build
 Sharing with outside people, versions, retention rules, encryption at rest, password reset, multi-factor login, and the AI suggestion feature. See THREATS.md for why.
@@ -63,7 +63,7 @@ Open http://127.0.0.1:5000 . Local demo password: TestPass12345.
 ## Tests
     python -m pytest -q
 
-51 tests cover access control (another owner, a viewer, an anonymous visitor, read and edit grants, revocation, expiry, disabled users, deleted documents), the audit log (refused attempts recorded, tampering detected), uploads, registration and login, and the admin pages.
+56 tests cover access control (another owner, a viewer, an anonymous visitor, read and edit grants, revocation, expiry, disabled users, deleted documents), the audit log (refused attempts recorded, tampering detected), uploads, registration and login, and the admin pages. Six of them attack revocation directly: access lost on the next request, revoking an edit grant, revoking one person leaves others alone, re-granting restores access, only the owner can revoke, and a revoke cannot be pointed at another document's grant.
 
 ## Deployment
 Neon (PostgreSQL) and Render. Build command: `pip install -r requirements.txt && python seed.py`. Start command: `gunicorn app:app --timeout 60`. Environment variables: PYTHON_VERSION, APP_ENV=production, SECRET_KEY, DATABASE_URL, SEED_PASSWORD. The schema is in schema.sql.

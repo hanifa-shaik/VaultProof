@@ -38,9 +38,9 @@ Done = built. Tested = an automated test fails if it breaks. Checked live = I ch
 | 32 | Clickjacking, sniffing, cached pages | Done, tested | `X-Frame-Options`, `nosniff`, `no-store`, HSTS in production |
 | 33 | Script injection (XSS) | Done | Jinja escapes output. No Content-Security-Policy yet (accepted) |
 | 34 | Wrong IP in the audit log behind the proxy | Done | `ProxyFix` in production |
-| 35 | Tests still pass after a check is removed | Done | Removed the `authorize()` call: 14 failed. Removed the owner check: 8 failed. Removed the revoked-grant filter: 1 failed. Removed the admin gate: 2 failed. Each undone with git |
+| 35 | Tests still pass after a check is removed | Done | Removed the `authorize()` call: 14 failed. Removed the owner check: 8 failed. Removed the revoked-grant filter: 1 failed with the first 51 tests, 4 failed after I added five more revocation tests. Removed the document check in revoke: 1 failed. Removed the admin gate: 2 failed. Each undone with git |
 | 36 | Demo passwords are public in the README | Accepted | The brief requires them. They are throwaway and I will change them after judging |
-| 37 | Revocation is covered by only one automated test | Accepted | The by-hand test backs it up |
+| 37 | Revocation works only if tests cover it | Done, tested | Six automated tests: immediate loss of access, revoking an edit grant, revoking one person leaves others alone, re-granting restores access, only the owner can revoke, and a revoke cannot be pointed at another document's grant. Removing the revoked-grant filter now fails 4 tests; removing the document check in `revoke` fails 1 |
 | 38 | Deleted documents stay stored | Accepted | Soft delete so they can be recovered. No purge |
 | 39 | File contents not encrypted at rest | Accepted | The database is private and reached only through the app |
 | 40 | Someone with database owner rights could drop the triggers | Accepted | A separate database role would fix it. Not done |
