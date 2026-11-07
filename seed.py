@@ -54,7 +54,7 @@ if __name__ == "__main__":
     with app.app_context():
         admin, owner, viewer = [get_or_create_user(*a) for a in ACCOUNTS]
         seed_document(owner, viewer, "welcome.txt",
-                      "Welcome to TrustVault. The demo viewer was given read access to this file.\n",
+                      "Welcome to VaultProof . The demo viewer was given read access to this file.\n",
                       True)
         seed_document(owner, viewer, "private-notes.txt",
                       "This file was NOT shared. Only the demo owner may open it.\n",

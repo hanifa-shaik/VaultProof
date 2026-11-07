@@ -1,4 +1,4 @@
-# TrustVault
+# VaultProof
 
 Secure document sharing where only people who were granted a document can reach it, and every attempt, including refused ones, is recorded in a tamper-evident audit log.
 
@@ -6,7 +6,7 @@ Secure document sharing where only people who were granted a document can reach 
 
 The free host goes to sleep when idle, so the first page load can take about a minute. Please wait for it.
 
-**Repository:** https://github.com/hanifa-shaik/TrustVault
+**Repository:** https://github.com/hanifa-shaik/VaultProof
 
 
 ## Demo accounts
@@ -50,9 +50,9 @@ Sharing with outside people, versions, retention rules, encryption at rest, pass
 ## How to run it
 Python 3.12 or newer is recommended. SQLite is used locally, so there is no database to set up.
 
-    git clone https://github.com/hanifa-shaik/TrustVault.git
-    git clone <https://github.com/hanifa-shaik/TrustVault.git>
-    cd TrustVault
+    git clone https://github.com/hanifa-shaik/VaultProof.git
+    git clone <https://github.com/hanifa-shaik/VaultProof.git>
+    cd VaultProof
     python -m venv .venv
     .venv\Scripts\activate
     pip install -r requirements.txt

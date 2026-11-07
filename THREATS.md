@@ -1,4 +1,4 @@
-# TrustVault - Threats
+# VaultProof - Threats
 
 Done = built. Tested = an automated test fails if it breaks. Checked live = I checked it by hand on the deployed site. Accepted = I know and chose to leave it. Not built = left out on purpose.
 
